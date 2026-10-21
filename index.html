@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radar Emergenze Calcio (IA + Google Search)</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f6f9; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        textarea, input { width: 100%; margin-bottom: 15px; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        textarea { height: 120px; }
+        button { background-color: #2b7a78; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 4px; width: 100%; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #3aafa9; }
+        .result-box { margin-top: 20px; background: #fff; padding: 15px; border-left: 5px solid #2b7a78; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .team-title { color: #2b7a78; margin-top: 0; }
+        .summary { font-size: 14px; color: #333; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>🚨 Radar Emergenze Squadre</h2>
+        <p style="font-size: 13px; color: #666;">Cerca notizie fresche sul web tramite IA e Google Search.</p>
+        
+        <label><b>API Key di Gemini:</b></label>
+        <input type="password" id="apiKey" placeholder="Incolla qui la tua API Key (AIzaSy...)">
+
+        <label><b>Lista squadre (una per riga):</b></label>
+        <textarea id="teamList" placeholder="Es:\nJuventus\nTaranto\nLecco"></textarea>
+        
+        <button onclick="analizzaSquadre()">Cerca e Analizza con IA</button>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        async function analizzaSquadre() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const teams = document.getElementById('teamList').value.split('\n').filter(t => t.trim() !== '');
+            const resultDiv = document.getElementById('results');
+            
+            if (!apiKey) { alert("Inserisci la chiave API di Gemini!"); return; }
+            if (teams.length === 0) { alert("Inserisci almeno una squadra!"); return; }
+
+            resultDiv.innerHTML = '<p style="text-align:center;">Ricerca in corso sul web con IA... ⏳</p>';
+            let finalHtml = '';
+
+            for (let team of teams) {
+                // Prompt ottimizzato per far cercare le emergenze reali
+                const prompt = `Cerca sul web le ultimissime notizie sulla squadra di calcio "${team}". Verifica se ci sono gravi emergenze in corso come: infortuni di massa, squalifiche pesanti, scioperi, stipendi non pagati o se la squadra è costretta a giocare con i giovanissimi/primavera. Riassumi la situazione in modo estremamente conciso (massimo 3-4 righe). Se non ci sono problemi gravi o emergenze particolari, scrivi semplicemente: "Tutto regolare, nessun'emergenza segnalata."`;
+                
+                // Usiamo il modello gemini-2.5-flash o 1.5-flash abilitando il tool googleSearch
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    tools: [{ "googleSearch": {} }] // Questo dice a Gemini di usare Google Search in tempo reale!
+                };
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    const data = await response.json();
+                    let aiResponse = "Impossibile recuperare i dati.";
+                    
+                    if (data.candidates && data.candidates.length > 0) {
+                        aiResponse = data.candidates[0].content.parts[0].text;
+                    }
+                    
+                    finalHtml += `
+                        <div class="result-box">
+                            <h3 class="team-title">${team}</h3>
+                            <div class="summary">${aiResponse.replace(/\n/g, '<br>')}</div>
+                        </div>
+                    `;
+                } catch (error) {
+                    finalHtml += `
+                        <div class="result-box" style="border-left-color: #d9534f;">
+                            <h3 class="team-title" style="color: #d9534f;">${team}</h3>
+                            <p class="summary">Errore di connessione durante la ricerca.</p>
+                        </div>
+                    `;
+                }
+            }
+            resultDiv.innerHTML = finalHtml;
+        }
+    </script>
+</body>
+  </html>
+  
